@@ -1,0 +1,262 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <locale.h>
+
+// Estrutura da tripulação
+typedef struct {
+    int codigo;
+    char nome[50];
+    char telefone[15];
+    char cargo[15]; // "piloto", "copiloto", "comissário"
+} Tripulacao;
+
+
+void cadastrarTripulacao();
+void listarTripulantes();
+void limparTodosRegistros();
+void removerTripulanteEspecifico();
+int validarCodigoUnico(int codigo);
+int validarCargo(char *cargo);
+int validarNumerico(char *input);
+int validarAlfabetico(char *input);
+
+
+int main() {
+    setlocale(LC_ALL, "");
+    int opcao;
+
+    do {
+        printf("\n=========================================\n");
+        printf("        SISTEMA DE GERENCIAMENTO        \n");
+        printf("             DE TRIPULAÇÃO              \n");
+        printf("=========================================\n");
+        printf("1. Cadastrar Tripulante\n");
+        printf("2. Listar Tripulantes\n");
+        printf("3. Remover Tripulante Específico\n");
+        printf("4. Limpar Todos os Registros\n");
+        printf("5. Sair\n");
+        printf("=========================================\n");
+        printf("Escolha uma opção: ");
+        scanf("%d", &opcao);
+
+        switch (opcao) {
+            case 1:
+                cadastrarTripulacao();
+                break;
+            case 2:
+                listarTripulantes();
+                break;
+            case 3:
+                removerTripulanteEspecifico();
+                break;
+            case 4:
+                limparTodosRegistros();
+                break;
+            case 5:
+                printf("\nEncerrando o programa... Até logo!\n");
+                break;
+            default:
+                printf("\nOpção inválida! Por favor, tente novamente.\n");
+        }
+    } while (opcao != 5);
+
+    return 0;
+}
+
+// validar cargos permitidos
+int validarCargo(char *cargo) {
+    return (strcmp(cargo, "piloto") == 0 ||
+            strcmp(cargo, "copiloto") == 0 ||
+            strcmp(cargo, "comissario") == 0);
+}
+
+// validar código único
+int validarCodigoUnico(int codigo) {
+    FILE *file;
+    Tripulacao tripulante;
+
+    // Abrir arquivo no modo leitura
+    file = fopen("tripulacao.dat", "rb");
+    if (!file) {
+        return 1;
+    }
+
+    // Ler cada registro do arquivo para verificar o código
+    while (fread(&tripulante, sizeof(Tripulacao), 1, file)) {
+        if (tripulante.codigo == codigo) {
+            fclose(file);
+            return 0;
+        }
+    }
+
+    fclose(file);
+    return 1;
+}
+
+// validar  numeros
+int validarNumerico(char *input) {
+    for (int i = 0; input[i] != '\0'; i++) {
+        if (!isdigit(input[i])) {
+            return 0;
+        }
+    }
+    // Evitar zeros à esquerda e valores negativos
+    if (input[0] == '0' || atoi(input) <= 0) {
+        return 0;
+    }
+    return 1;
+}
+
+//  validar letras
+int validarAlfabetico(char *input) {
+    for (int i = 0; input[i] != '\0'; i++) {
+        if (!isalpha(input[i]) && input[i] != ' ') {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+//  cadastrar tripulantes
+void cadastrarTripulacao() {
+    FILE *file;
+    Tripulacao tripulante;
+    char input[50];
+
+    // Abrir arquivo binário
+    file = fopen("tripulacao.dat", "ab+");
+    if (!file) {
+        printf("\nErro ao abrir o arquivo.\n");
+        return;
+    }
+
+    printf("\n=========================================\n");
+    printf("        CADASTRAR NOVO TRIPULANTE        \n");
+    printf("=========================================\n");
+
+
+    do {
+        printf("\nDigite o código do tripulante: ");
+        scanf("%s", input);
+        if (!validarNumerico(input)) {
+            printf("\nErro: Código deve conter apenas números positivos. Tente novamente.\n");
+        } else {
+            tripulante.codigo = atoi(input);
+            if (!validarCodigoUnico(tripulante.codigo)) {
+                printf("\nErro: Código já existente! Digite outro código.\n");
+            }
+        }
+    } while (!validarNumerico(input) || !validarCodigoUnico(tripulante.codigo));
+
+
+    do {
+        printf("\nDigite o nome do tripulante: ");
+        scanf(" %[^\n]s", tripulante.nome);
+        if (!validarAlfabetico(tripulante.nome)) {
+            printf("\nErro: Nome deve conter apenas letras. Tente novamente.\n");
+        }
+    } while (!validarAlfabetico(tripulante.nome));
+
+    do {
+        printf("\nDigite o telefone do tripulante (11 dígitos): ");
+        scanf("%s", input);
+        if (!validarNumerico(input) || strlen(input) != 11) {
+            printf("\nErro: Telefone deve conter exatamente 11 dígitos numéricos. Tente novamente.\n");
+        }
+    } while (!validarNumerico(input) || strlen(input) != 11);
+    strcpy(tripulante.telefone, input);
+
+    do {
+        printf("\nDigite o cargo (piloto, copiloto, comissário): ");
+        scanf(" %[^\n]s", tripulante.cargo);
+        if (!validarCargo(tripulante.cargo)) {
+            printf("\nErro: Cargo inválido! Deve ser 'piloto', 'copiloto' ou 'comissario'. Tente novamente.\n");
+        }
+    } while (!validarCargo(tripulante.cargo));
+
+
+    fwrite(&tripulante, sizeof(Tripulacao), 1, file);
+    printf("\nTripulante cadastrado com sucesso!\n");
+
+    fclose(file);
+}
+
+// listar tripulantes cadastrados
+void listarTripulantes() {
+    FILE *file;
+    Tripulacao tripulante;
+
+    // Abrir o arquivo no modo leitura
+    file = fopen("tripulacao.dat", "rb");
+    if (!file) {
+        printf("\nErro ao abrir o arquivo. Nenhum tripulante cadastrado.\n");
+        return;
+    }
+
+    printf("\n=========================================\n");
+    printf("        LISTA DE TRIPULANTES CADASTRADOS        \n");
+    printf("=========================================\n");
+
+    while (fread(&tripulante, sizeof(Tripulacao), 1, file)) {
+        printf("\n-----------------------------\n");
+        printf("Código   : %d\n", tripulante.codigo);
+        printf("Nome     : %s\n", tripulante.nome);
+        printf("Telefone : %s\n", tripulante.telefone);
+        printf("Cargo    : %s\n", tripulante.cargo);
+        printf("-----------------------------");
+    }
+
+    fclose(file);
+    printf("\n=========================================\n");
+}
+
+// limpar todos os registros
+void limparTodosRegistros() {
+    FILE *file = fopen("tripulacao.dat", "wb");
+    if (!file) {
+        printf("\nErro ao tentar limpar os registros.\n");
+        return;
+    }
+    fclose(file);
+    printf("\nTodos os registros foram removidos com sucesso!\n");
+}
+
+// remover um tripulante específico
+void removerTripulanteEspecifico() {
+    FILE *file = fopen("tripulacao.dat", "rb");
+    FILE *tempFile = fopen("temp.dat", "wb");
+    Tripulacao tripulante;
+    int codigo, encontrado = 0;
+
+    if (!file || !tempFile) {
+        printf("\nErro ao abrir o arquivo.\n");
+        return;
+    }
+
+    printf("\nDigite o código do tripulante a ser removido: ");
+    scanf("%d", &codigo);
+
+    // Ler e copiar registros que não correspondem ao código
+    while (fread(&tripulante, sizeof(Tripulacao), 1, file)) {
+        if (tripulante.codigo != codigo) {
+            fwrite(&tripulante, sizeof(Tripulacao), 1, tempFile);
+        } else {
+            encontrado = 1;
+        }
+    }
+
+    fclose(file);
+    fclose(tempFile);
+
+    // Substituir o arquivo original pelo temporário
+    remove("tripulacao.dat");
+    rename("temp.dat", "tripulacao.dat");
+
+    if (encontrado) {
+        printf("\nTripulante removido com sucesso!\n");
+    } else {
+        printf("\nTripulante com código %d não encontrado.\n", codigo);
+    }
+}
